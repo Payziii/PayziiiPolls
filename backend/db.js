@@ -72,23 +72,6 @@ db.serialize(() => {
   });
   console.log('Таблицы БД инициализированы');
 
-  // Миграция: добавляем creator_id если его нет
-  db.all("PRAGMA table_info(surveys)", (err, columns) => {
-    if (err) {
-      console.error('Ошибка чтения схемы:', err.message);
-      return;
-    }
-    const hasCreatorId = columns.some(col => col.name === 'creator_id');
-    if (!hasCreatorId) {
-      db.run("ALTER TABLE surveys ADD COLUMN creator_id TEXT DEFAULT 'anonymous'", (err) => {
-        if (err) {
-          console.error('Ошибка миграции:', err.message);
-        } else {
-          console.log('Миграция: добавлена колонка creator_id');
-        }
-      });
-    }
-  });
 });
 
 // Вспомогательные промисы-обёртки над callback API sqlite3

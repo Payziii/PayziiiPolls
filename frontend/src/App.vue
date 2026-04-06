@@ -52,12 +52,17 @@ const isMenuOpen = ref(false)
 
 /* ========== Navbar ========== */
 .navbar {
-  background-color: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(180deg, 
+    rgba(15, 15, 15, 0.95) 0%,
+    rgba(15, 15, 15, 0.9) 100%
+  );
+  border-bottom: 1px solid rgba(82, 183, 136, 0.08);
   position: sticky;
   top: 0;
   z-index: 100;
   padding: 1rem 0;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .navbar-container {
@@ -77,15 +82,21 @@ const isMenuOpen = ref(false)
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--color-primary);
-  transition: color var(--transition-fast);
+  transition: all var(--transition-fast);
 
   &:hover {
-    color: var(--color-primary-light);
+    transform: scale(1.05);
   }
 }
 
 .brand-icon {
   font-size: 1.75rem;
+  animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .brand-text {
@@ -93,34 +104,60 @@ const isMenuOpen = ref(false)
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  letter-spacing: 0.5px;
 }
 
 .navbar-nav {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.5rem;
   margin-left: auto;
 }
 
 .nav-link {
   color: var(--color-text-secondary);
   font-weight: 500;
-  transition: color var(--transition-fast);
-  padding: 0.5rem 1rem;
+  transition: all var(--transition-fast);
+  padding: 0.625rem 1.25rem;
   border-radius: var(--radius-md);
+  position: relative;
 
-  &:hover,
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(82, 183, 136, 0.1), transparent);
+    border-radius: var(--radius-md);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  &:hover {
+    color: var(--color-primary);
+  }
+
+  &:hover::before,
+  &.router-link-active::before {
+    opacity: 1;
+  }
+
   &.router-link-active {
     color: var(--color-primary);
   }
 }
 
 .nav-link-primary {
-  background-color: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
   color: white !important;
+  box-shadow: 0 4px 12px rgba(82, 183, 136, 0.3);
 
   &:hover {
-    background-color: var(--color-primary-hover);
+    box-shadow: 0 6px 16px rgba(82, 183, 136, 0.4);
+    transform: translateY(-2px);
+  }
+
+  &::before {
+    opacity: 0 !important;
   }
 }
 
@@ -165,17 +202,17 @@ const isMenuOpen = ref(false)
     top: 100%;
     left: 0;
     right: 0;
-    background-color: var(--color-bg-secondary);
+    background: linear-gradient(180deg, rgba(26, 26, 26, 0.98), rgba(26, 26, 26, 0.95));
     flex-direction: column;
     gap: 0;
     margin: 0;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid rgba(82, 183, 136, 0.08);
     max-height: 0;
     overflow: hidden;
     transition: max-height var(--transition-normal);
 
     &.active {
-      max-height: 200px;
+      max-height: 250px;
     }
   }
 
@@ -183,7 +220,7 @@ const isMenuOpen = ref(false)
     width: 100%;
     padding: 1rem 1.5rem;
     border-radius: 0;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
   }
 
   .main-content {
