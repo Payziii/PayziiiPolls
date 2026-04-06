@@ -2,15 +2,23 @@ const router = require('express').Router();
 const db = require('../db');
 
 // ── GET /api/surveys ──────────────────────────────────────────────────────────
-// Список всех опросов (для администратора)
+// Список всех опросов (для администратора) или опросы пользователя
 router.get('/', async (req, res, next) => {
   try {
-    const surveys = await db.allAsync(
-      `SELECT id, title, description, is_active, starts_at, ends_at,
-              max_responses, created_at
-       FROM surveys
-       ORDER BY created_at DESC`
-    );
+    const { creator_id } = req.query;
+    let query = `SELECT id, title, description, is_active, starts_at, ends_at,
+              max_responses, creator_id, created_at
+       FROM surveys`;
+    const params = [];
+
+    if (creator_id) {
+      query += ` WHERE creator_id = ?`;
+      params.push(creator_id);
+    }
+
+    query += ` ORDER BY created_at DESC`;
+
+    const surveys = await db.allAsync(query, params);
     res.json(surveys);
   } catch (err) {
     next(err);
@@ -72,7 +80,7 @@ router.get('/:id', async (req, res, next) => {
 // ── POST /api/surveys ─────────────────────────────────────────────────────────
 // Создать новый опрос
 router.post('/', async (req, res, next) => {
-  const { title, description, questions = [], starts_at, ends_at, max_responses } = req.body;
+  const { title, description, questions = [], starts_at, ends_at, max_responses, creator_id } = req.body;
 
   if (!title || !title.trim()) {
     return res.status(400).json({ error: 'Поле title обязательно' });
@@ -81,9 +89,9 @@ router.post('/', async (req, res, next) => {
   try {
     // Вставляем опрос
     const { lastID: surveyId } = await db.runAsync(
-      `INSERT INTO surveys (title, description, starts_at, ends_at, max_responses)
-       VALUES (?, ?, ?, ?, ?)`,
-      [title.trim(), description || '', starts_at || null, ends_at || null, max_responses || null]
+      `INSERT INTO surveys (title, description, starts_at, ends_at, max_responses, creator_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [title.trim(), description || '', starts_at || null, ends_at || null, max_responses || null, creator_id || 'anonymous']
     );
 
     // Вставляем вопросы

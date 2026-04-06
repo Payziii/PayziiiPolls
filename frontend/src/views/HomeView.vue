@@ -84,7 +84,11 @@
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
+import { useNotifications } from '../composables/useNotifications'
+import { useUserId } from '../composables/useUserId'
 
+const { success, error: showError } = useNotifications()
+const userId = ref(null)
 const surveys = ref([])
 const loading = ref(true)
 const error = ref(null)
@@ -93,7 +97,10 @@ const fetchSurveys = async () => {
   try {
     loading.value = true
     error.value = null
-    surveys.value = await surveyApi.getAllSurveys()
+    const creatorId = useUserId()
+    userId.value = creatorId
+    // Fetch only surveys created by the current user
+    surveys.value = await surveyApi.getMysSurveys(creatorId)
   } catch (err) {
     error.value = 'Не удалось загрузить опросы. Попробуйте позже.'
     console.error(err)
@@ -108,8 +115,9 @@ const deleteSurvey = async (id) => {
   try {
     await surveyApi.deleteSurvey(id)
     surveys.value = surveys.value.filter((s) => s.id !== id)
+    success('Опрос успешно удален')
   } catch (err) {
-    alert('Ошибка при удалении опроса')
+    showError('Ошибка при удалении опроса')
     console.error(err)
   }
 }
@@ -117,7 +125,9 @@ const deleteSurvey = async (id) => {
 const copyShareLink = (id) => {
   const link = `${window.location.origin}/take/${id}`
   navigator.clipboard.writeText(link).then(() => {
-    alert('Ссылка скопирована в буфер обмена!')
+    success('Ссылка скопирована в буфер обмена!')
+  }).catch(() => {
+    showError('Не удалось скопировать ссылку')
   })
 }
 

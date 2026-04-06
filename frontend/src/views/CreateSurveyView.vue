@@ -164,13 +164,21 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
+import { useNotifications } from '../composables/useNotifications'
+import { useUserId } from '../composables/useUserId'
 import { v4 as uuidv4 } from 'uuid'
 
 const router = useRouter()
+const { warning, success, error: showError } = useNotifications()
+const userId = ref(null)
 const loading = ref(false)
+
+onMounted(() => {
+  userId.value = useUserId()
+})
 
 const form = ref({
   title: '',
@@ -212,25 +220,25 @@ const removeOption = (questionIndex, optionIndex) => {
 const submitForm = async () => {
   // Validation
   if (!form.value.title.trim()) {
-    alert('Пожалуйста, заполните название опроса')
+    warning('Пожалуйста, заполните название опроса')
     return
   }
 
   if (form.value.questions.length === 0) {
-    alert('Пожалуйста, добавьте хотя бы один вопрос')
+    warning('Пожалуйста, добавьте хотя бы один вопрос')
     return
   }
 
   for (const question of form.value.questions) {
     if (!question.text.trim()) {
-      alert('Пожалуйста, заполните текст всех вопросов')
+      warning('Пожалуйста, заполните текст всех вопросов')
       return
     }
 
     if (['radio', 'checkbox'].includes(question.type)) {
       const filledOptions = question.options.filter((o) => o.text.trim())
       if (filledOptions.length < 2) {
-        alert('Каждый вопрос с выбором должен иметь минимум 2 варианта ответов')
+        warning('Каждый вопрос с выбором должен иметь минимум 2 варианта ответов')
         return
       }
     }
@@ -245,6 +253,7 @@ const submitForm = async () => {
       starts_at: form.value.starts_at || null,
       ends_at: form.value.ends_at || null,
       max_responses: form.value.max_responses || null,
+      creator_id: userId.value,
       questions: form.value.questions.map((q) => ({
         text: q.text.trim(),
         type: q.type,
@@ -258,10 +267,10 @@ const submitForm = async () => {
     }
 
     const result = await surveyApi.createSurvey(surveyData)
-    alert('Опрос успешно создан!')
+    success('Опрос успешно создан!')
     router.push('/')
   } catch (err) {
-    alert('Ошибка при создании опроса: ' + (err.response?.data?.error || err.message))
+    showError('Ошибка при создании опроса: ' + (err.response?.data?.error || err.message))
     console.error(err)
   } finally {
     loading.value = false

@@ -125,6 +125,53 @@ router.get('/:id/stats', async (req, res, next) => {
   }
 });
 
+// ── GET /api/surveys/:id/answers ──────────────────────────────────────────────
+// Получить все индивидуальные ответы для всех вопросов опроса
+router.get('/:id/answers', async (req, res, next) => {
+  try {
+    const survey = await db.getAsync('SELECT * FROM surveys WHERE id = ?', [req.params.id]);
+    if (!survey) return res.status(404).json({ error: 'Опрос не найден' });
+
+    const questions = await db.allAsync(
+      'SELECT * FROM questions WHERE survey_id = ? ORDER BY order_num',
+      [req.params.id]
+    );
+
+    const allAnswers = [];
+
+    for (const q of questions) {
+      const answers = await db.allAsync(
+        `SELECT
+           a.id,
+           a.session_id,
+           a.answered_at,
+           a.option_id,
+           a.answer_text,
+           o.text AS option_text
+         FROM answers a
+         LEFT JOIN options o ON o.id = a.option_id
+         WHERE a.question_id = ?
+         ORDER BY a.answered_at DESC`,
+        [q.id]
+      );
+
+      allAnswers.push({
+        question_id: q.id,
+        question_text: q.text,
+        question_type: q.type,
+        answers: answers
+      });
+    }
+
+    res.json({
+      survey: { id: survey.id, title: survey.title },
+      data: allAnswers
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/surveys/:id/export ───────────────────────────────────────────────
 // Экспорт всех ответов в CSV
 router.get('/:id/export', async (req, res, next) => {

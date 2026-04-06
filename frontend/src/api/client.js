@@ -16,6 +16,14 @@ export const surveyApi = {
     return data;
   },
 
+  // Получить опросы пользователя
+  getMysSurveys: async (creatorId) => {
+    const { data } = await client.get('/surveys', {
+      params: { creator_id: creatorId }
+    });
+    return data;
+  },
+
   // Получить активные опросы
   getActiveSurveys: async () => {
     const { data } = await client.get('/surveys/active');
@@ -55,6 +63,12 @@ export const surveyApi = {
   // Получить статистику
   getStats: async (id) => {
     const { data } = await client.get(`/surveys/${id}/stats`);
+    return data;
+  },
+
+  // Получить все ответы опроса
+  getAllAnswers: async (id) => {
+    const { data } = await client.get(`/surveys/${id}/answers`);
     return data;
   },
 };

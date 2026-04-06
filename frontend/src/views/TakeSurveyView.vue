@@ -111,9 +111,11 @@
 import { ref, onMounted, reactive } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
+import { useNotifications } from '../composables/useNotifications'
 import { v4 as uuidv4 } from 'uuid'
 
 const route = useRoute()
+const { warning, success, error: showError } = useNotifications()
 const survey = ref(null)
 const loading = ref(true)
 const error = ref(null)
@@ -152,7 +154,7 @@ const submitAnswers = async () => {
     if (question.is_required) {
       const answer = answers[question.id]
       if (!answer || (Array.isArray(answer) && answer.length === 0)) {
-        alert(`Пожалуйста, ответьте на обязательный вопрос: "${question.text}"`)
+        warning(`Пожалуйста, ответьте на обязательный вопрос: "${question.text}"`)
         return
       }
     }
@@ -193,11 +195,12 @@ const submitAnswers = async () => {
       answers: formattedAnswers,
     })
 
+    success('Спасибо! Ваши ответы успешно отправлены')
     submitted.value = true
   } catch (err) {
     const errorMsg =
       err.response?.data?.error || 'Ошибка при отправке ответов. Попробуйте позже.'
-    alert(errorMsg)
+    showError(errorMsg)
     console.error(err)
   } finally {
     submitting.value = false

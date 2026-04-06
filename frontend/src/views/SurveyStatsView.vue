@@ -11,6 +11,7 @@
       </div>
       <div class="header-actions">
         <button @click="refreshStats" class="btn btn-secondary">🔄 Обновить</button>
+        <button @click="loadAllAnswers" class="btn btn-secondary">📋 Все ответы</button>
         <RouterLink :to="`/survey/${surveyId}`" class="btn btn-secondary">✏️ Редактировать</RouterLink>
       </div>
     </div>
@@ -118,6 +119,40 @@
         Не удалось загрузить данные
       </p>
     </div>
+
+    <!-- All Answers Modal -->
+    <div v-if="showAllAnswersModal" class="modal-overlay" @click.self="showAllAnswersModal = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Все ответы</h2>
+          <button @click="showAllAnswersModal = false" class="modal-close">✕</button>
+        </div>
+        
+        <div v-if="!allAnswers" class="modal-body text-center">
+          <div class="spinner"></div>
+          <p class="text-secondary mt-2">Загрузка ответов...</p>
+        </div>
+
+        <div v-else class="modal-body answers-list">
+          <div v-for="questionData in allAnswers.data" :key="questionData.question_id" class="question-answers">
+            <h3>{{ questionData.question_text }}</h3>
+            <p class="text-secondary">{{ getQuestionTypeName(questionData.question_type) }} • {{ questionData.answers.length }} ответов</p>
+            
+            <div class="answers-items">
+              <div v-for="answer in questionData.answers" :key="answer.id" class="answer-item">
+                <div class="answer-meta">
+                  <span class="session-id">{{ answer.session_id.substring(0, 8) }}...</span>
+                  <span class="answer-time">{{ formatDate(answer.answered_at) }}</span>
+                </div>
+                <div class="answer-text">
+                  {{ answer.option_text || answer.answer_text || '-' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -125,16 +160,20 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
+import { useNotifications } from '../composables/useNotifications'
 import BarChart from '../components/charts/BarChart.vue'
 import ScaleChart from '../components/charts/ScaleChart.vue'
 
 const route = useRoute()
+const { error: showError } = useNotifications()
 const surveyId = route.params.id
 
 const survey = ref(null)
 const stats = ref(null)
+const allAnswers = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const showAllAnswersModal = ref(false)
 
 const fetchData = async () => {
   try {
@@ -156,9 +195,22 @@ const fetchData = async () => {
     console.log('Stats loaded:', stats.value)
   } catch (err) {
     error.value = 'Ошибка загрузки данных'
+    showError('Ошибка загрузки статистики')
     console.error(err)
   } finally {
     loading.value = false
+  }
+}
+
+const loadAllAnswers = async () => {
+  try {
+    allAnswers.value = null
+    showAllAnswersModal.value = true
+    allAnswers.value = await surveyApi.getAllAnswers(surveyId)
+  } catch (err) {
+    showError('Не удалось загрузить ответы')
+    showAllAnswersModal.value = false
+    console.error(err)
   }
 }
 
@@ -420,5 +472,115 @@ onMounted(() => {
   .nps-breakdown {
     grid-template-columns: 1fr;
   }
+}
+
+/* ========== Modal ========== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.answers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.question-answers {
+  padding: 1.5rem;
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+
+  h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+  }
+}
+
+.answers-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.answer-item {
+  padding: 0.75rem 1rem;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.answer-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  margin-bottom: 0.5rem;
+}
+
+.session-id {
+  font-family: monospace;
+}
+
+.answer-time {
+  color: var(--color-text-secondary);
+}
+
+.answer-text {
+  font-size: 0.9rem;
+  color: var(--color-text);
+  word-break: break-word;
 }
 </style>

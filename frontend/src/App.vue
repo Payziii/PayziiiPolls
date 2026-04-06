@@ -1,6 +1,7 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
 import { ref } from 'vue'
+import NotificationContainer from './components/NotificationContainer.vue'
 
 const isMenuOpen = ref(false)
 </script>
@@ -37,12 +38,8 @@ const isMenuOpen = ref(false)
       <RouterView />
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="container">
-        <p>&copy; 2024 PayziiiPolls. Сделано с ❤️</p>
-      </div>
-    </footer>
+    <!-- Notifications -->
+    <NotificationContainer />
   </div>
 </template>
 
@@ -149,19 +146,6 @@ const isMenuOpen = ref(false)
 .main-content {
   flex: 1;
   padding: 2rem 0;
-}
-
-/* ========== Footer ========== */
-.footer {
-  background-color: var(--color-bg-secondary);
-  border-top: 1px solid var(--color-border);
-  padding: 2rem 0;
-  margin-top: 4rem;
-
-  p {
-    text-align: center;
-    color: var(--color-text-secondary);
-  }
 }
 
 /* ========== Responsive ========== */
