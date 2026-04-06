@@ -91,12 +91,6 @@ const isMenuOpen = ref(false)
 
 .brand-icon {
   font-size: 1.75rem;
-  animation: rotate 3s linear infinite;
-}
-
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .brand-text {

@@ -61,10 +61,10 @@
           <RouterLink :to="`/survey/${survey.id}/stats`" class="btn btn-secondary btn-sm">
             📊 Статистика
           </RouterLink>
-          <RouterLink :to="`/survey/${survey.id}`" class="btn btn-secondary btn-sm">
+          <RouterLink :to="`/survey/${survey.id}/edit`" class="btn btn-secondary btn-sm">
             ✏️ Редактировать
           </RouterLink>
-          <button @click="deleteSurvey(survey.id)" class="btn btn-danger btn-sm">
+          <button @click="openDeleteConfirm(survey.id)" class="btn btn-danger btn-sm">
             🗑️ Удалить
           </button>
           <button
@@ -77,6 +77,9 @@
         </div>
       </div>
     </div>
+
+    <!-- Confirm Dialog -->
+    <ConfirmDialog ref="confirmDialog" />
   </div>
 </template>
 
@@ -86,12 +89,14 @@ import { RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
 import { useNotifications } from '../composables/useNotifications'
 import { useUserId } from '../composables/useUserId'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const { success, error: showError } = useNotifications()
 const userId = ref(null)
 const surveys = ref([])
 const loading = ref(true)
 const error = ref(null)
+const confirmDialog = ref(null)
 
 const fetchSurveys = async () => {
   try {
@@ -109,9 +114,20 @@ const fetchSurveys = async () => {
   }
 }
 
-const deleteSurvey = async (id) => {
-  if (!confirm('Вы уверены? Это действие нельзя отменить.')) return
+const openDeleteConfirm = async (id) => {
+  const confirmed = await confirmDialog.value.open({
+    title: 'Удалить опрос?',
+    message: 'Это действие нельзя отменить. Опрос и все ответы будут удалены окончательно.',
+    confirmText: 'Удалить',
+    cancelText: 'Отмена',
+  })
 
+  if (confirmed) {
+    await deleteSurvey(id)
+  }
+}
+
+const deleteSurvey = async (id) => {
   try {
     await surveyApi.deleteSurvey(id)
     surveys.value = surveys.value.filter((s) => s.id !== id)
@@ -173,6 +189,20 @@ onMounted(() => {
 .page-header p {
   margin: 0;
   font-size: 0.95rem;
+}
+
+.page-header .btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(82, 183, 136, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+
+  &:hover {
+    box-shadow: 0 6px 16px rgba(82, 183, 136, 0.4);
+    transform: translateY(-2px);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  }
 }
 
 .empty-state {

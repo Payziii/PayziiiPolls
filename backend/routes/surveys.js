@@ -18,7 +18,17 @@ router.get('/', async (req, res, next) => {
 
     query += ` ORDER BY created_at DESC`;
 
-    const surveys = await db.allAsync(query, params);
+    let surveys = await db.allAsync(query, params);
+    
+    // Calculate actual active status based on current date and time window
+    const now = new Date().toISOString();
+    surveys = surveys.map((survey) => ({
+      ...survey,
+      is_active: survey.is_active === 1 &&
+        (!survey.starts_at || survey.starts_at <= now) &&
+        (!survey.ends_at || survey.ends_at >= now) ? 1 : 0
+    }));
+    
     res.json(surveys);
   } catch (err) {
     next(err);
@@ -54,6 +64,13 @@ router.get('/:id', async (req, res, next) => {
       [req.params.id]
     );
     if (!survey) return res.status(404).json({ error: 'Опрос не найден' });
+
+    // Calculate actual active status based on current date and time window
+    const now = new Date().toISOString();
+    const isActuallyActive = survey.is_active === 1 &&
+      (!survey.starts_at || survey.starts_at <= now) &&
+      (!survey.ends_at || survey.ends_at >= now);
+    survey.is_active = isActuallyActive ? 1 : 0;
 
     const questions = await db.allAsync(
       'SELECT * FROM questions WHERE survey_id = ? ORDER BY order_num',

@@ -23,6 +23,12 @@ const router = createRouter({
       meta: { title: 'Детали опроса' },
     },
     {
+      path: '/survey/:id/edit',
+      name: 'survey-edit',
+      component: () => import('../views/EditSurveyView.vue'),
+      meta: { title: 'Редактировать опрос' },
+    },
+    {
       path: '/survey/:id/stats',
       name: 'survey-stats',
       component: () => import('../views/SurveyStatsView.vue'),
