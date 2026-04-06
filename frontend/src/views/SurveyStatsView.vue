@@ -1,0 +1,424 @@
+<template>
+  <div class="container container-md">
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <RouterLink to="/" class="back-link">← Назад</RouterLink>
+        <h1>Статистика опроса</h1>
+        <p v-if="stats && survey" class="text-secondary">
+          Всего ответов: <strong>{{ stats.respondents }}</strong>
+        </p>
+      </div>
+      <div class="header-actions">
+        <button @click="refreshStats" class="btn btn-secondary">🔄 Обновить</button>
+        <RouterLink :to="`/survey/${surveyId}`" class="btn btn-secondary">✏️ Редактировать</RouterLink>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="text-center mt-4">
+      <div class="spinner"></div>
+      <p class="text-secondary mt-2">Загрузка статистики...</p>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="error" class="alert alert-danger">
+      {{ error }}
+    </div>
+
+    <!-- Stats -->
+    <div v-else-if="stats && stats.data && stats.data.length > 0">
+      <!-- Survey Info Card -->
+      <div class="info-card">
+        <div class="info-item">
+          <span class="label">Название:</span>
+          <span class="value">{{ survey.title }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Статус:</span>
+          <span class="value" :class="survey.is_active ? 'success' : 'danger'">
+            {{ survey.is_active ? '🟢 Активный' : '🔴 Неактивный' }}
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="label">Создан:</span>
+          <span class="value">{{ formatDate(survey.created_at) }}</span>
+        </div>
+      </div>
+
+      <!-- Questions Stats -->
+      <div class="stats-grid">
+        <div v-for="stat in stats.data" :key="stat.id" class="stat-card">
+          <!-- Question Header -->
+          <div class="stat-header">
+            <h3>{{ stat.text }}</h3>
+            <span class="stat-type">{{ getQuestionTypeName(stat.type) }}</span>
+          </div>
+
+          <div class="stat-body">
+            <!-- Radio / Checkbox -->
+            <div v-if="['radio', 'checkbox'].includes(stat.type)">
+              <div class="stat-meta">
+                <span>Всего ответов: <strong>{{ stat.total }}</strong></span>
+              </div>
+              <BarChart :question="stat" />
+            </div>
+
+            <!-- Scale -->
+            <div v-else-if="stat.type === 'scale'">
+              <div class="stat-meta">
+                <span v-if="stat.average">
+                  Средний балл: <strong>{{ stat.average }}</strong>
+                </span>
+                <span v-if="stat.nps" class="nps-score">NPS: {{ stat.nps }}</span>
+              </div>
+
+              <ScaleChart :question="stat" />
+
+              <!-- NPS Breakdown -->
+              <div v-if="stat.nps_breakdown" class="nps-breakdown">
+                <div class="nps-item promoters">
+                  <span class="label">Промоутеры (9-10)</span>
+                  <span class="count">{{ stat.nps_breakdown.promoters.count }}</span>
+                  <span class="percent">{{ stat.nps_breakdown.promoters.percent }}%</span>
+                </div>
+                <div class="nps-item neutrals">
+                  <span class="label">Нейтралы (7-8)</span>
+                  <span class="count">{{ stat.nps_breakdown.neutrals.count }}</span>
+                  <span class="percent">{{ stat.nps_breakdown.neutrals.percent }}%</span>
+                </div>
+                <div class="nps-item detractors">
+                  <span class="label">Критики (0-6)</span>
+                  <span class="count">{{ stat.nps_breakdown.detractors.count }}</span>
+                  <span class="percent">{{ stat.nps_breakdown.detractors.percent }}%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Text -->
+            <div v-else-if="stat.type === 'text'" class="text-responses">
+              <p class="text-secondary">Текстовые ответы не отображаются</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Data -->
+    <div v-else-if="loading === false" class="empty-state">
+      <div class="empty-icon">📊</div>
+      <h2>Нет данных</h2>
+      <p class="text-secondary" v-if="stats && stats.respondents === 0">
+        Ответов на этот опрос еще не поступило
+      </p>
+      <p class="text-secondary" v-else-if="stats && stats.respondents > 0">
+        Ошибка при загрузке статистики. Попробуйте обновить страницу.
+      </p>
+      <p class="text-secondary" v-else>
+        Не удалось загрузить данные
+      </p>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
+import { surveyApi } from '../api/client'
+import BarChart from '../components/charts/BarChart.vue'
+import ScaleChart from '../components/charts/ScaleChart.vue'
+
+const route = useRoute()
+const surveyId = route.params.id
+
+const survey = ref(null)
+const stats = ref(null)
+const loading = ref(true)
+const error = ref(null)
+
+const fetchData = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    const [surveyData, statsData] = await Promise.all([
+      surveyApi.getSurvey(surveyId),
+      surveyApi.getStats(surveyId),
+    ])
+    survey.value = surveyData
+    
+    // Переструктурируем данные статистики
+    stats.value = {
+      respondents: statsData.respondents,
+      data: statsData.questions, // Переименуем questions в data для совместимости с шаблоном
+      questions: statsData.questions, // Оставим и как questions
+    }
+    
+    console.log('Stats loaded:', stats.value)
+  } catch (err) {
+    error.value = 'Ошибка загрузки данных'
+    console.error(err)
+  } finally {
+    loading.value = false
+  }
+}
+
+const refreshStats = () => {
+  fetchData()
+}
+
+const getQuestionTypeName = (type) => {
+  const names = {
+    radio: '🔘 Один ответ',
+    checkbox: '☑️ Несколько ответов',
+    scale: '📊 Шкала (0-10)',
+    text: '✏️ Текст',
+  }
+  return names[type] || type
+}
+
+const formatDate = (date) => {
+  return new Date(date).toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+onMounted(() => {
+  fetchData()
+})
+</script>
+
+<style scoped>
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.page-header > div:first-child {
+  flex: 1;
+  min-width: 300px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+  font-weight: 500;
+
+  &:hover {
+    color: var(--color-primary-light);
+  }
+}
+
+.page-header h1 {
+  margin: 0.5rem 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.info-card {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.value {
+  font-size: 1rem;
+  color: var(--color-text-primary);
+
+  &.success {
+    color: var(--color-success);
+  }
+
+  &.danger {
+    color: var(--color-danger);
+  }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: all var(--transition-normal);
+
+  &:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-md);
+  }
+}
+
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+
+  h3 {
+    margin: 0;
+    flex: 1;
+  }
+}
+
+.stat-type {
+  padding: 0.25rem 0.75rem;
+  background-color: rgba(82, 183, 136, 0.1);
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stat-meta {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  flex-wrap: wrap;
+
+  strong {
+    color: var(--color-primary);
+  }
+}
+
+.nps-score {
+  padding: 0.25rem 0.75rem;
+  background-color: rgba(82, 183, 136, 0.1);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.nps-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.nps-item {
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &.promoters {
+    background-color: rgba(82, 183, 136, 0.1);
+    border: 1px solid var(--color-success);
+  }
+
+  &.neutrals {
+    background-color: rgba(247, 127, 0, 0.1);
+    border: 1px solid var(--color-warning);
+  }
+
+  &.detractors {
+    background-color: rgba(214, 40, 40, 0.1);
+    border: 1px solid var(--color-danger);
+  }
+
+  .label {
+    font-size: 0.75rem;
+  }
+
+  .count {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .percent {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-secondary);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    width: 100%;
+
+    button,
+    a {
+      flex: 1;
+    }
+  }
+
+  .info-card {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nps-breakdown {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
