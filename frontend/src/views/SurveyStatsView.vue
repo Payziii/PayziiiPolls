@@ -12,6 +12,7 @@
       <div class="header-actions">
         <button @click="refreshStats" class="btn btn-secondary">🔄 Обновить</button>
         <button @click="loadAllAnswers" class="btn btn-secondary">📋 Все ответы</button>
+        <button @click="exportToCSV" class="btn btn-secondary">📥 Экспорт CSV</button>
         <RouterLink :to="`/survey/${surveyId}`" class="btn btn-secondary">✏️ Редактировать</RouterLink>
       </div>
     </div>
@@ -236,6 +237,90 @@ const formatDate = (date) => {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+const exportToCSV = async () => {
+  if (!stats.value || !stats.value.data) {
+    showError('Нет данных для экспорта')
+    return
+  }
+
+  try {
+    // Load all answers for detailed export
+    const allAnswersData = await surveyApi.getAllAnswers(surveyId)
+
+    // UTF-8 BOM for Excel compatibility
+    let csv = '\uFEFF'
+
+    // Header with survey info
+    csv += `Опрос,${survey.value.title}\n`
+    csv += `Дата экспорта,${new Date().toLocaleString('ru-RU')}\n`
+    csv += `Всего ответов,${stats.value.respondents}\n\n`
+
+    // Stats for each question
+    stats.value.data.forEach((stat) => {
+      csv += `\n"${stat.text}","Тип: ${getQuestionTypeName(stat.type)}"\n`
+      csv += `Всего ответов,${stat.total || 0}\n`
+
+      if (['radio', 'checkbox'].includes(stat.type)) {
+        csv += `\nВариант,Кол-во,Процент\n`
+        if (stat.options && stat.options.length > 0) {
+          stat.options.forEach((opt) => {
+            const count = opt.count || 0
+            const percent = ((count / (stat.total || 1)) * 100).toFixed(1)
+            csv += `"${opt.text.replace(/"/g, '""')}",${count},${percent}%\n`
+          })
+        }
+      } else if (stat.type === 'scale') {
+        csv += `Средний балл,${stat.average || '-'}\n`
+        if (stat.nps !== undefined) {
+          csv += `NPS,${stat.nps}\n`
+        }
+        if (stat.nps_breakdown) {
+          csv += `\nКатегория,Кол-во,Процент\n`
+          csv += `Промоутеры (9-10),${stat.nps_breakdown.promoters.count},${stat.nps_breakdown.promoters.percent}%\n`
+          csv += `Нейтралы (7-8),${stat.nps_breakdown.neutrals.count},${stat.nps_breakdown.neutrals.percent}%\n`
+          csv += `Критики (0-6),${stat.nps_breakdown.detractors.count},${stat.nps_breakdown.detractors.percent}%\n`
+        }
+        if (stat.buckets && stat.buckets.length > 0) {
+          csv += `\nБалл,Кол-во\n`
+          stat.buckets.forEach((b) => {
+            csv += `${b.score},${b.count}\n`
+          })
+        }
+      }
+    })
+
+    // Detailed answers section
+    csv += `\n\n=== ДЕТАЛЬНЫЕ ОТВЕТЫ ===\n\n`
+    
+    if (allAnswersData && allAnswersData.data && allAnswersData.data.length > 0) {
+      allAnswersData.data.forEach((questionData) => {
+        csv += `\n"${questionData.question_text} (${getQuestionTypeName(questionData.question_type)})"\n`
+        csv += `Номер ответа,Время ответа,Ответ\n`
+        
+        questionData.answers.forEach((answer, idx) => {
+          const answerTime = formatDate(answer.answered_at)
+          const answerText = (answer.option_text || answer.answer_text || '-').replace(/"/g, '""')
+          csv += `${idx + 1},"${answerTime}","${answerText}"\n`
+        })
+      })
+    }
+
+    // Download with proper encoding
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `${survey.value.title.replace(/[^\w\s]/g, '')}_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    showError('Ошибка при экспорте данных')
+    console.error(err)
+  }
 }
 
 onMounted(() => {
