@@ -205,7 +205,7 @@ a {
     transition: opacity var(--transition-fast);
   }
 
-  &:hover::before:not(:disabled) {
+  &:not(:disabled):hover::before {
     opacity: 1;
   }
 }

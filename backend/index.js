@@ -31,7 +31,7 @@ app.use('/api/surveys', answersRouter);
 app.use('/api/surveys', statsRouter);
 
 // ── Статика (клиент Vue в продакшене) ─────────────────────────────────────────
-const clientDist = path.join(__dirname, '../client/dist');
+const clientDist = path.join(__dirname, '../frontend/dist');
 app.use(express.static(clientDist));
 app.get('/{*path}', (_req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));

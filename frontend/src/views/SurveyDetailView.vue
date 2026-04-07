@@ -93,7 +93,6 @@ import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
 import { formatLocalDate } from '../composables/useTimezone'
-import { formatLocalDate } from '../composables/useTimezone'
 
 const route = useRoute()
 const survey = ref(null)
