@@ -162,6 +162,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
 import { useNotifications } from '../composables/useNotifications'
+import { formatLocalDate } from '../composables/useTimezone'
 import BarChart from '../components/charts/BarChart.vue'
 import ScaleChart from '../components/charts/ScaleChart.vue'
 
@@ -230,13 +231,7 @@ const getQuestionTypeName = (type) => {
 }
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatLocalDate(date, true)
 }
 
 const exportToCSV = async () => {

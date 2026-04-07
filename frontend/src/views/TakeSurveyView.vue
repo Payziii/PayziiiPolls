@@ -20,8 +20,17 @@
         <p v-if="survey.description" class="survey-description">{{ survey.description }}</p>
       </div>
 
-      <!-- Form -->
-      <form @submit.prevent="submitAnswers" class="survey-form">
+      <!-- Unavailability Warning -->
+      <div v-if="!survey.is_active" class="alert alert-warning">
+        <strong>⚠️ Опрос недоступен</strong>
+        <p class="mt-2 mb-0">
+          {{ getUnavailabilityMessage() }}
+        </p>
+        <RouterLink to="/" class="btn btn-secondary btn-sm mt-3">Вернуться домой</RouterLink>
+      </div>
+
+      <!-- Form (only if survey is active) -->
+      <form v-else @submit.prevent="submitAnswers" class="survey-form">
         <!-- Questions -->
         <div v-for="(question, index) in survey.questions" :key="question.id" class="question-block">
           <div class="question-header">
@@ -112,6 +121,7 @@ import { ref, onMounted, reactive } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
 import { useNotifications } from '../composables/useNotifications'
+import { formatLocalDate } from '../composables/useTimezone'
 import { v4 as uuidv4 } from 'uuid'
 
 const route = useRoute()
@@ -123,6 +133,22 @@ const submitting = ref(false)
 const submitted = ref(false)
 const answers = reactive({})
 const sessionId = ref(sessionStorage.getItem('sessionId') || uuidv4())
+
+const getUnavailabilityMessage = () => {
+  if (!survey.value) return 'Опрос не доступен'
+
+  if (survey.value.availabilityReason === 'disabled') {
+    return 'Этот опрос был отключен администратором'
+  } else if (survey.value.availabilityReason === 'not_started') {
+    const startDate = formatLocalDate(survey.value.starts_at)
+    return `Опрос начнётся ${startDate}`
+  } else if (survey.value.availabilityReason === 'ended') {
+    const endDate = formatLocalDate(survey.value.ends_at)
+    return `Опрос завершился ${endDate}`
+  }
+
+  return 'Опрос не доступен'
+}
 
 onMounted(async () => {
   // Store session ID

@@ -29,14 +29,20 @@ router.post('/:id/answers', async (req, res, next) => {
   try {
     // Проверяем существование опроса
     const survey = await db.getAsync(
-      'SELECT id, is_active, ends_at, max_responses FROM surveys WHERE id = ?',
+      'SELECT id, is_active, starts_at, ends_at, max_responses FROM surveys WHERE id = ?',
       [surveyId]
     );
     if (!survey) return res.status(404).json({ error: 'Опрос не найден' });
     if (!survey.is_active) return res.status(403).json({ error: 'Опрос неактивен' });
 
+    // Проверяем, начался ли опрос
+    const now = new Date();
+    if (survey.starts_at && new Date(survey.starts_at) > now) {
+      return res.status(403).json({ error: 'Опрос еще не начался' });
+    }
+
     // Проверяем не истёк ли срок
-    if (survey.ends_at && new Date(survey.ends_at) < new Date()) {
+    if (survey.ends_at && new Date(survey.ends_at) < now) {
       return res.status(403).json({ error: 'Срок прохождения опроса истёк' });
     }
 

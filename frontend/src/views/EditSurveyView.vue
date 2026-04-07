@@ -120,6 +120,7 @@ import { ref, onMounted, reactive } from 'vue'
 import { useRoute, RouterLink, useRouter } from 'vue-router'
 import { surveyApi } from '../api/client'
 import { useNotifications } from '../composables/useNotifications'
+import { utcToLocal, localToUTC } from '../composables/useTimezone'
 
 const route = useRoute()
 const router = useRouter()
@@ -148,8 +149,8 @@ const fetchSurvey = async () => {
     // Populate form with current data
     form.title = survey.value.title
     form.description = survey.value.description || ''
-    form.starts_at = survey.value.starts_at ? formatDateForInput(survey.value.starts_at) : ''
-    form.ends_at = survey.value.ends_at ? formatDateForInput(survey.value.ends_at) : ''
+    form.starts_at = survey.value.starts_at ? utcToLocal(survey.value.starts_at) : ''
+    form.ends_at = survey.value.ends_at ? utcToLocal(survey.value.ends_at) : ''
     form.max_responses = survey.value.max_responses || null
     form.is_active = survey.value.is_active === 1
   } catch (err) {
@@ -158,11 +159,6 @@ const fetchSurvey = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const formatDateForInput = (dateString) => {
-  const date = new Date(dateString)
-  return date.toISOString().slice(0, 16)
 }
 
 const getTypeName = (type) => {
@@ -186,8 +182,8 @@ const submitForm = async () => {
     await surveyApi.updateSurvey(route.params.id, {
       title: form.title.trim(),
       description: form.description || '',
-      starts_at: form.starts_at || null,
-      ends_at: form.ends_at || null,
+      starts_at: localToUTC(form.starts_at),
+      ends_at: localToUTC(form.ends_at),
       max_responses: form.max_responses || null,
       is_active: form.is_active ? 1 : 0,
     })

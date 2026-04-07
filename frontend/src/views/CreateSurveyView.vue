@@ -169,6 +169,7 @@ import { useRouter, RouterLink } from 'vue-router'
 import { surveyApi } from '../api/client'
 import { useNotifications } from '../composables/useNotifications'
 import { useUserId } from '../composables/useUserId'
+import { localToUTC } from '../composables/useTimezone'
 import { v4 as uuidv4 } from 'uuid'
 
 const router = useRouter()
@@ -250,8 +251,8 @@ const submitForm = async () => {
     const surveyData = {
       title: form.value.title.trim(),
       description: form.value.description.trim(),
-      starts_at: form.value.starts_at || null,
-      ends_at: form.value.ends_at || null,
+      starts_at: localToUTC(form.value.starts_at),
+      ends_at: localToUTC(form.value.ends_at),
       max_responses: form.value.max_responses || null,
       creator_id: userId.value,
       questions: form.value.questions.map((q) => ({

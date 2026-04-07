@@ -66,12 +66,21 @@ router.get('/:id', async (req, res, next) => {
     if (!survey) return res.status(404).json({ error: 'Опрос не найден' });
 
     // Calculate actual active status based on current date and time window
-    const now = new Date().toISOString();
-    const isActuallyActive = survey.is_active === 1 &&
-      (!survey.starts_at || survey.starts_at <= now) &&
-      (!survey.ends_at || survey.ends_at >= now);
-    survey.is_active = isActuallyActive ? 1 : 0;
-
+    const now = new Date();
+    const nowIso = now.toISOString();
+    
+    let availabilityReason = null; // null = available, otherwise explain why not
+    
+    if (survey.is_active === 0) {
+      availabilityReason = 'disabled';
+    } else if (survey.starts_at && new Date(survey.starts_at) > now) {
+      availabilityReason = 'not_started';
+    } else if (survey.ends_at && new Date(survey.ends_at) < now) {
+      availabilityReason = 'ended';
+    }
+    
+    const isActuallyActive = availabilityReason === null;
+    
     const questions = await db.allAsync(
       'SELECT * FROM questions WHERE survey_id = ? ORDER BY order_num',
       [survey.id]
@@ -88,7 +97,12 @@ router.get('/:id', async (req, res, next) => {
       }
     }
 
-    res.json({ ...survey, questions });
+    res.json({ 
+      ...survey, 
+      questions, 
+      is_active: isActuallyActive ? 1 : 0,
+      availabilityReason 
+    });
   } catch (err) {
     next(err);
   }
